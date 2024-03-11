@@ -47,7 +47,7 @@ float getDistance(Berb *berb1, Berb *berb2){
 	return sqrt(x + y);
 }
 
-void updatePos(Berb *berb, float screenWidth, float screenHeight){
+void avoidWalls(Berb *berb, float screenWidth, float screenHeight){
 	if (berb -> x_pos + berb -> x_vel > screenWidth - SCREEN_MARGIN){
 		berb -> x_vel -= TURN_FACTOR;
 	} 
@@ -89,6 +89,86 @@ void updatePos(Berb *berb, float screenWidth, float screenHeight){
 
 }
 
+void updateBerbPosition(Berb *berb_list[], int number_of_berbs){
+	int close_dx;
+	int close_dy;
+	float xvel_avg;
+	float yvel_avg;
+	float xpos_avg;
+	float ypos_avg;
+	int neighboring_berbs;
+
+	for (int i = 0; i < number_of_berbs; i++){
+		// separation
+		close_dx = 0;
+		close_dy = 0;
+
+		for (int j = 0; j < number_of_berbs; j++){
+			if (j != i && 
+			getDistance(berb_list[i], berb_list[j]) < PROTECTED_RANGE){
+				close_dx += berb_list[i] -> x_pos - berb_list[j] -> x_pos;
+				close_dy += berb_list[i] -> y_pos - berb_list[j] -> y_pos;
+			}
+		}
+		berb_list[i] -> x_vel += close_dx * AVOID_FACTOR;
+		berb_list[i] -> y_vel += close_dy * AVOID_FACTOR;
+
+		//allignment
+		xvel_avg = 0;
+		yvel_avg = 0;
+		neighboring_berbs = 0;
+
+		for (int j = 0; j < number_of_berbs; j++){
+			if (j != i && 
+			getDistance(berb_list[i], berb_list[j]) < VISIBLE_RANGE){
+				xvel_avg += berb_list[j] -> x_vel;
+				yvel_avg += berb_list[j] -> y_vel;
+				neighboring_berbs++;
+			}
+		}
+		if (neighboring_berbs > 0){
+			xvel_avg = xvel_avg / neighboring_berbs;
+			yvel_avg = yvel_avg / neighboring_berbs;
+			berb_list[i] -> x_vel += (xvel_avg - berb_list[i] -> x_vel)*MATCHING_FACTOR;
+			berb_list[i] -> y_vel += (yvel_avg - berb_list[i] -> y_vel)*MATCHING_FACTOR;
+		}
+
+		//cohesion
+		xpos_avg = 0;
+		ypos_avg = 0;
+		neighboring_berbs = 0;
+
+		for (int j = 0; j < number_of_berbs; j++){
+			if (j != i && 
+			getDistance(berb_list[i], berb_list[j]) < VISIBLE_RANGE){
+				xpos_avg += berb_list[j] -> x_pos;
+				ypos_avg += berb_list[j] -> y_pos;
+				neighboring_berbs++;
+			}
+		}
+		if (neighboring_berbs > 0){
+			xpos_avg = xpos_avg / neighboring_berbs;
+			ypos_avg = ypos_avg / neighboring_berbs;
+			berb_list[i] -> x_vel += (xpos_avg - berb_list[i] -> x_pos)*CENTERING_FACTOR;
+			berb_list[i] -> y_vel += (ypos_avg - berb_list[i] -> y_pos)*CENTERING_FACTOR;
+		}
+
+		avoidWalls(berb_list[i], GetScreenWidth(), GetScreenHeight());
+	}
+}
+
+void drawBerb(Berb *berb_list[], int number_of_berbs){
+	for (int i = 0; i < number_of_berbs; i++){
+		// just to have one specific one to look at
+		if (i == 0){
+		DrawCircle(berb_list[i] -> x_pos, berb_list[i] -> y_pos, berb_list[i] ->radius, RED);
+		} else {
+		DrawCircle(berb_list[i] -> x_pos, berb_list[i] -> y_pos, berb_list[i] ->radius, BLUE);
+		}
+	}
+
+}
+
 int main(void){
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 	InitWindow(GetScreenWidth(), GetScreenHeight(), "berbs");
@@ -114,78 +194,10 @@ int main(void){
 		ClearBackground(RAYWHITE);
 		DrawText("berbs", GetScreenWidth() / 2,  GetScreenHeight()/ 2, 20, BLACK);
 
-		for (int i = 0; i < number_of_berbs; i++){
-			// just to have one specific one to look at
-			if (i == 0){
-			DrawCircle(berb_list[i] -> x_pos, berb_list[i] -> y_pos, berb_list[i] ->radius, RED);
-			} else {
-			DrawCircle(berb_list[i] -> x_pos, berb_list[i] -> y_pos, berb_list[i] ->radius, BLUE);
-			}
-		}
+		drawBerb(berb_list, number_of_berbs);
 
 
-
-		// separation
-		for (int i = 0; i < number_of_berbs; i++){
-			close_dx = 0;
-			close_dy = 0;
-
-			for (int j = 0; j < number_of_berbs; j++){
-				if (j != i && 
-				getDistance(berb_list[i], berb_list[j]) < PROTECTED_RANGE){
-					close_dx += berb_list[i] -> x_pos - berb_list[j] -> x_pos;
-					close_dy += berb_list[i] -> y_pos - berb_list[j] -> y_pos;
-				}
-			}
-			berb_list[i] -> x_vel += close_dx * AVOID_FACTOR;
-			berb_list[i] -> y_vel += close_dy * AVOID_FACTOR;
-
-			//allignment
-			float xvel_avg = 0;
-			float yvel_avg = 0;
-			int neighboring_berbs = 0;
-
-			for (int j = 0; j < number_of_berbs; j++){
-				if (j != i && 
-				getDistance(berb_list[i], berb_list[j]) < VISIBLE_RANGE){
-					xvel_avg += berb_list[j] -> x_vel;
-					yvel_avg += berb_list[j] -> y_vel;
-					neighboring_berbs++;
-				}
-			}
-			if (neighboring_berbs > 0){
-				xvel_avg = xvel_avg / neighboring_berbs;
-				yvel_avg = yvel_avg / neighboring_berbs;
-				berb_list[i] -> x_vel += (xvel_avg - berb_list[i] -> x_vel)*MATCHING_FACTOR;
-				berb_list[i] -> y_vel += (yvel_avg - berb_list[i] -> y_vel)*MATCHING_FACTOR;
-			}
-
-			//cohesion
-			float xpos_avg = 0;
-			float ypos_avg = 0;
-			neighboring_berbs = 0;
-
-			for (int j = 0; j < number_of_berbs; j++){
-				if (j != i && 
-				getDistance(berb_list[i], berb_list[j]) < VISIBLE_RANGE){
-					xpos_avg += berb_list[j] -> x_pos;
-					ypos_avg += berb_list[j] -> y_pos;
-					neighboring_berbs++;
-				}
-			}
-			if (neighboring_berbs > 0){
-				xpos_avg = xpos_avg / neighboring_berbs;
-				ypos_avg = ypos_avg / neighboring_berbs;
-				berb_list[i] -> x_vel += (xpos_avg - berb_list[i] -> x_pos)*CENTERING_FACTOR;
-				berb_list[i] -> y_vel += (ypos_avg - berb_list[i] -> y_pos)*CENTERING_FACTOR;
-			}
-
-			updatePos(berb_list[i], GetScreenWidth(), GetScreenHeight());
-
-		}
-
-		
-
+		updateBerbPosition(berb_list, number_of_berbs);
 
 		EndDrawing();
 	}
