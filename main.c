@@ -4,16 +4,16 @@
 #include <stdlib.h>
 #include <math.h>
 
-const int NUMBER_OF_BERBS = 75;
-const double TURN_FACTOR = 0.2;
-const int PROTECTED_RANGE = 10;
-const int VISIBLE_RANGE = 48;
-const float AVOID_FACTOR = 0.09;
-const float MAX_SPEED = 10.0;
-const float MIN_SPEED = 4.0;
-const float SCREEN_MARGIN = 100;
+const int NUMBER_OF_BERBS = 200;
+const double TURN_FACTOR = 0.5;
+const int PROTECTED_RANGE = 15;
+const int VISIBLE_RANGE = 50;
+const float AVOID_FACTOR = 0.05;
+const float MAX_SPEED = 5.0;
+const float MIN_SPEED = 3.0;
+const float SCREEN_MARGIN = 200;
 const float MATCHING_FACTOR = 0.05;
-const float CENTERING_FACTOR = 0.0005;
+const float CENTERING_FACTOR = 0.005;
 
 typedef struct Berb {
 	float x_pos;
@@ -127,7 +127,6 @@ int main(void){
 
 		// separation
 		for (int i = 0; i < number_of_berbs; i++){
-			updatePos(berb_list[i], GetScreenWidth(), GetScreenHeight());
 			close_dx = 0;
 			close_dy = 0;
 
@@ -140,11 +139,8 @@ int main(void){
 			}
 			berb_list[i] -> x_vel += close_dx * AVOID_FACTOR;
 			berb_list[i] -> y_vel += close_dy * AVOID_FACTOR;
-		}
 
-		// alignment
-		for (int i = 0; i < number_of_berbs; i++){
-			updatePos(berb_list[i], GetScreenWidth(), GetScreenHeight());
+			//allignment
 			float xvel_avg = 0;
 			float yvel_avg = 0;
 			int neighboring_berbs = 0;
@@ -163,14 +159,11 @@ int main(void){
 				berb_list[i] -> x_vel += (xvel_avg - berb_list[i] -> x_vel)*MATCHING_FACTOR;
 				berb_list[i] -> y_vel += (yvel_avg - berb_list[i] -> y_vel)*MATCHING_FACTOR;
 			}
-		}
 
-		// cohesion
-		for (int i = 0; i < number_of_berbs; i++){
-			updatePos(berb_list[i], GetScreenWidth(), GetScreenHeight());
+			//cohesion
 			float xpos_avg = 0;
 			float ypos_avg = 0;
-			int neighboring_berbs = 0;
+			neighboring_berbs = 0;
 
 			for (int j = 0; j < number_of_berbs; j++){
 				if (j != i && 
@@ -186,6 +179,9 @@ int main(void){
 				berb_list[i] -> x_vel += (xpos_avg - berb_list[i] -> x_pos)*CENTERING_FACTOR;
 				berb_list[i] -> y_vel += (ypos_avg - berb_list[i] -> y_pos)*CENTERING_FACTOR;
 			}
+
+			updatePos(berb_list[i], GetScreenWidth(), GetScreenHeight());
+
 		}
 
 		
