@@ -9,8 +9,8 @@ const double TURN_FACTOR = 0.5;
 const int PROTECTED_RANGE = 15;
 const int VISIBLE_RANGE = 50;
 const float AVOID_FACTOR = 0.05;
-const float MAX_SPEED = 5.0;
-const float MIN_SPEED = 3.0;
+const float MAX_SPEED = 4;
+const float MIN_SPEED = 2;
 const float SCREEN_MARGIN = 200;
 const float MATCHING_FACTOR = 0.05;
 const float CENTERING_FACTOR = 0.005;
@@ -89,7 +89,7 @@ void avoidWalls(Berb *berb, float screenWidth, float screenHeight){
 
 }
 
-void updateBerbPosition(Berb *berb_list[], int number_of_berbs){
+void updateBerbPosition(Berb *berb_list[], int number_of_berbs, int player_x, int player_y){
 	int close_dx;
 	int close_dy;
 	float xvel_avg;
@@ -99,7 +99,23 @@ void updateBerbPosition(Berb *berb_list[], int number_of_berbs){
 	int neighboring_berbs;
 
 	for (int i = 0; i < number_of_berbs; i++){
-		// separation
+		// avoidance of player berb
+		for (int i = 0; i < number_of_berbs; i++){
+			float x = pow(berb_list[i] -> x_pos -  player_x, 2);
+			float y = pow(berb_list[i] -> y_pos - player_y, 2);
+
+			float distance = sqrt(x + y);
+
+			if (distance < PROTECTED_RANGE + 10){
+				berb_list[i] -> x_vel +=  AVOID_FACTOR;
+				berb_list[i] -> y_vel +=  AVOID_FACTOR;
+
+			}
+
+		}
+
+
+		// separation from other berbs
 		close_dx = 0;
 		close_dy = 0;
 
@@ -174,6 +190,7 @@ int main(void){
 	InitWindow(GetScreenWidth(), GetScreenHeight(), "berbs");
 
 	SetTargetFPS(60);
+	HideCursor();
 
 	int number_of_berbs = NUMBER_OF_BERBS;
 
@@ -188,16 +205,25 @@ int main(void){
 
 
 	float close_dx, close_dy;
+	int player_x, player_y;
+
 	while (!WindowShouldClose()){
 		BeginDrawing();
+
+
 
 		ClearBackground(RAYWHITE);
 		DrawText("berbs", GetScreenWidth() / 2,  GetScreenHeight()/ 2, 20, BLACK);
 
+		player_x = GetMouseX();
+		player_y = GetMouseY();
+
+		DrawCircle(player_x, player_y, 10, PURPLE);
+
 		drawBerb(berb_list, number_of_berbs);
 
 
-		updateBerbPosition(berb_list, number_of_berbs);
+		updateBerbPosition(berb_list, number_of_berbs, player_x, player_y);
 
 		EndDrawing();
 	}
