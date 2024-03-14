@@ -5,15 +5,17 @@
 #include <math.h>
 
 const int NUMBER_OF_BERBS = 200;
-const double TURN_FACTOR = 0.5;
+const double TURN_FACTOR = 0.2;
 const int PROTECTED_RANGE = 15;
 const int VISIBLE_RANGE = 50;
 const float AVOID_FACTOR = 0.05;
-const float MAX_SPEED = 4;
-const float MIN_SPEED = 2;
+const float MAX_SPEED = 1;
+const float MIN_SPEED = 0.5;
 const float SCREEN_MARGIN = 200;
 const float MATCHING_FACTOR = 0.05;
 const float CENTERING_FACTOR = 0.005;
+const int AVOID_PLAYER_RANGE = 80;
+const float PLAYER_AVOID_FACTOR = 2;
 
 typedef struct Berb {
 	float x_pos;
@@ -31,8 +33,11 @@ Berb *makeBerb(float screenWidth, float screenHeight){
 	berb -> x_pos =  rand() % (int) screenWidth;
 	berb -> y_pos =  rand() % (int) screenHeight;
 
-	berb -> x_vel = rand() % (int) MAX_SPEED * ((rand() % 2) * -1) + 1;
-	berb -> y_vel = rand() % (int) MAX_SPEED * ((rand() % 2) * -1) + 1;
+	//berb -> x_vel = rand() % (int) MAX_SPEED * ((rand() % 2) * -1) + 1;
+	//berb -> y_vel = rand() % (int) MAX_SPEED * ((rand() % 2) * -1) + 1;
+
+	berb -> x_vel = 0;
+	berb -> y_vel = 0;
 
 	berb -> radius = 8;
 
@@ -85,9 +90,33 @@ void avoidWalls(Berb *berb, float screenWidth, float screenHeight){
 			berb -> y_vel = -MAX_SPEED;
 		}
 	}
-
-
 }
+
+void avoidPlayer(Berb *berb, int player_x, int player_y){
+	float x = pow(berb -> x_pos -  player_x, 2);
+	float y = pow(berb -> y_pos - player_y, 2);
+
+	float distance = sqrt(x + y);
+
+
+	if (distance < AVOID_PLAYER_RANGE){
+		if (player_y - berb -> y_pos < 0) { //predator above boid
+			berb->y_vel = (berb -> y_vel + PLAYER_AVOID_FACTOR) ;
+		}
+		if (player_y - berb -> y_pos > 0) { //predator below boid
+			berb->y_vel = (berb -> y_vel - PLAYER_AVOID_FACTOR) ;
+		}
+		if (player_x - berb -> x_pos < 0) { //predator left of boid
+			berb->x_vel = (berb -> x_vel + PLAYER_AVOID_FACTOR) ;
+		}
+		if (player_x - berb -> x_pos > 0) { //predator right of boid
+			berb->x_vel = (berb -> y_vel - PLAYER_AVOID_FACTOR) ;
+		}
+
+	}
+}
+
+
 
 void updateBerbPosition(Berb *berb_list[], int number_of_berbs, int player_x, int player_y){
 	int close_dx;
@@ -100,19 +129,8 @@ void updateBerbPosition(Berb *berb_list[], int number_of_berbs, int player_x, in
 
 	for (int i = 0; i < number_of_berbs; i++){
 		// avoidance of player berb
-		for (int i = 0; i < number_of_berbs; i++){
-			float x = pow(berb_list[i] -> x_pos -  player_x, 2);
-			float y = pow(berb_list[i] -> y_pos - player_y, 2);
-
-			float distance = sqrt(x + y);
-
-			if (distance < PROTECTED_RANGE + 10){
-				berb_list[i] -> x_vel +=  AVOID_FACTOR;
-				berb_list[i] -> y_vel +=  AVOID_FACTOR;
-
-			}
-
-		}
+		
+		avoidPlayer(berb_list[i], player_x, player_y);
 
 
 		// separation from other berbs
@@ -120,8 +138,7 @@ void updateBerbPosition(Berb *berb_list[], int number_of_berbs, int player_x, in
 		close_dy = 0;
 
 		for (int j = 0; j < number_of_berbs; j++){
-			if (j != i && 
-			getDistance(berb_list[i], berb_list[j]) < PROTECTED_RANGE){
+			if (j != i && getDistance(berb_list[i], berb_list[j]) < PROTECTED_RANGE){
 				close_dx += berb_list[i] -> x_pos - berb_list[j] -> x_pos;
 				close_dy += berb_list[i] -> y_pos - berb_list[j] -> y_pos;
 			}
@@ -135,8 +152,7 @@ void updateBerbPosition(Berb *berb_list[], int number_of_berbs, int player_x, in
 		neighboring_berbs = 0;
 
 		for (int j = 0; j < number_of_berbs; j++){
-			if (j != i && 
-			getDistance(berb_list[i], berb_list[j]) < VISIBLE_RANGE){
+			if (j != i && getDistance(berb_list[i], berb_list[j]) < VISIBLE_RANGE){
 				xvel_avg += berb_list[j] -> x_vel;
 				yvel_avg += berb_list[j] -> y_vel;
 				neighboring_berbs++;
@@ -155,8 +171,7 @@ void updateBerbPosition(Berb *berb_list[], int number_of_berbs, int player_x, in
 		neighboring_berbs = 0;
 
 		for (int j = 0; j < number_of_berbs; j++){
-			if (j != i && 
-			getDistance(berb_list[i], berb_list[j]) < VISIBLE_RANGE){
+			if (j != i && getDistance(berb_list[i], berb_list[j]) < VISIBLE_RANGE){
 				xpos_avg += berb_list[j] -> x_pos;
 				ypos_avg += berb_list[j] -> y_pos;
 				neighboring_berbs++;
@@ -206,6 +221,7 @@ int main(void){
 
 	float close_dx, close_dy;
 	int player_x, player_y;
+	int goal_x, goal_y;
 
 	while (!WindowShouldClose()){
 		BeginDrawing();
