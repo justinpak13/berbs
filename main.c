@@ -137,33 +137,11 @@ void updateBerbPosition(Berb *berb_list[], int number_of_berbs, int player_x, in
 		close_dx = 0;
 		close_dy = 0;
 
-		for (int j = 0; j < number_of_berbs; j++){
-			if (j != i && getDistance(berb_list[i], berb_list[j]) < PROTECTED_RANGE){
-				close_dx += berb_list[i] -> x_pos - berb_list[j] -> x_pos;
-				close_dy += berb_list[i] -> y_pos - berb_list[j] -> y_pos;
-			}
-		}
-		berb_list[i] -> x_vel += close_dx * AVOID_FACTOR;
-		berb_list[i] -> y_vel += close_dy * AVOID_FACTOR;
 
 		//allignment
 		xvel_avg = 0;
 		yvel_avg = 0;
 		neighboring_berbs = 0;
-
-		for (int j = 0; j < number_of_berbs; j++){
-			if (j != i && getDistance(berb_list[i], berb_list[j]) < VISIBLE_RANGE){
-				xvel_avg += berb_list[j] -> x_vel;
-				yvel_avg += berb_list[j] -> y_vel;
-				neighboring_berbs++;
-			}
-		}
-		if (neighboring_berbs > 0){
-			xvel_avg = xvel_avg / neighboring_berbs;
-			yvel_avg = yvel_avg / neighboring_berbs;
-			berb_list[i] -> x_vel += (xvel_avg - berb_list[i] -> x_vel)*MATCHING_FACTOR;
-			berb_list[i] -> y_vel += (yvel_avg - berb_list[i] -> y_vel)*MATCHING_FACTOR;
-		}
 
 		//cohesion
 		xpos_avg = 0;
@@ -171,19 +149,33 @@ void updateBerbPosition(Berb *berb_list[], int number_of_berbs, int player_x, in
 		neighboring_berbs = 0;
 
 		for (int j = 0; j < number_of_berbs; j++){
+			if (j != i && getDistance(berb_list[i], berb_list[j]) < PROTECTED_RANGE){
+				close_dx += berb_list[i] -> x_pos - berb_list[j] -> x_pos;
+				close_dy += berb_list[i] -> y_pos - berb_list[j] -> y_pos;
+			}
 			if (j != i && getDistance(berb_list[i], berb_list[j]) < VISIBLE_RANGE){
+				xvel_avg += berb_list[j] -> x_vel;
+				yvel_avg += berb_list[j] -> y_vel;
 				xpos_avg += berb_list[j] -> x_pos;
 				ypos_avg += berb_list[j] -> y_pos;
 				neighboring_berbs++;
 			}
 		}
+		berb_list[i] -> x_vel += close_dx * AVOID_FACTOR;
+		berb_list[i] -> y_vel += close_dy * AVOID_FACTOR;
+
+
 		if (neighboring_berbs > 0){
+			xvel_avg = xvel_avg / neighboring_berbs;
+			yvel_avg = yvel_avg / neighboring_berbs;
+			berb_list[i] -> x_vel += (xvel_avg - berb_list[i] -> x_vel)*MATCHING_FACTOR;
+			berb_list[i] -> y_vel += (yvel_avg - berb_list[i] -> y_vel)*MATCHING_FACTOR;
+
 			xpos_avg = xpos_avg / neighboring_berbs;
 			ypos_avg = ypos_avg / neighboring_berbs;
 			berb_list[i] -> x_vel += (xpos_avg - berb_list[i] -> x_pos)*CENTERING_FACTOR;
 			berb_list[i] -> y_vel += (ypos_avg - berb_list[i] -> y_pos)*CENTERING_FACTOR;
 		}
-
 		avoidWalls(berb_list[i], GetScreenWidth(), GetScreenHeight());
 	}
 }
