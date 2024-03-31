@@ -200,6 +200,19 @@ void drawBerb(Berb *berb_list[], int number_of_berbs){
 
 }
 
+float calculateTotalDistance(Berb *berb_list[], int number_of_berbs){
+	float result_value;
+
+	result_value = 0;
+	for (int i = 0; i < number_of_berbs; i++){
+		for (int j = i + 1; j < number_of_berbs; j++){
+			result_value += getDistance(berb_list[i], berb_list[j]);
+		}
+	}
+
+	return result_value;
+}
+
 int main(void){
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 	InitWindow(GetScreenWidth(), GetScreenHeight(), "berbs");
@@ -223,9 +236,11 @@ int main(void){
 	int player_x, player_y;
 	int goal_x, goal_y;
 
+	int count = 0;
+	float total_distance = 0;
+
 	while (!WindowShouldClose()){
 		BeginDrawing();
-
 
 
 		ClearBackground(RAYWHITE);
@@ -241,7 +256,16 @@ int main(void){
 
 		updateBerbPosition(berb_list, number_of_berbs, player_x, player_y);
 
+		int sum_test = 0;
+		for (int i = 0; i < NUMBER_OF_BERBS; i++){
+			sum_test += berb_list[i] -> x_pos - berb_list[i] -> y_pos;
+		}
+
+		total_distance +=  calculateTotalDistance(berb_list, NUMBER_OF_BERBS);
+
 		EndDrawing();
+		count++;
 	}
+	printf("Average distance: %f\n", total_distance / count);
 
 }
