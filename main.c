@@ -205,6 +205,12 @@ float calculateTotalDistance(Berb *berb_list[], int number_of_berbs){
 	return result_value;
 }
 
+void freeBerbs(Berb *berb_list[], int NUMBER_OF_BERBS){
+	for (int i = 0; i < NUMBER_OF_BERBS; i++){
+		free(berb_list[i]);
+	}
+}
+
 int main(void){
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 	InitWindow(GetScreenWidth(), GetScreenHeight(), "berbs");
@@ -258,6 +264,8 @@ int main(void){
 		EndDrawing();
 		count++;
 	}
+
 	printf("Average distance: %f\n", total_distance / count);
+	freeBerbs(berb_list, NUMBER_OF_BERBS);
 
 }
