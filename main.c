@@ -3,118 +3,149 @@
 #include <time.h>
 #include <stdlib.h>
 #include "berbs.h"
+#include <math.h>
 
 
-const int NUMBER_OF_BERBS = 200;
+const int NUMBER_OF_BERBS = 5;
 
-typedef struct Neuron {
-	int number_of_inputs;
-	float bias;
-	float weights[];
-} Neuron;
+typedef struct vector {
+	size_t length;
+	double array[];
+} vector;
 
-typedef struct Layer{
-	int number_of_neurons;
-	Neuron *neurons[];
-} Layer;
+typedef	enum type {
+	weights,
+	biases,
+	empty
+} type;
 
-Neuron *createNeuron(int number_of_inputs){
-	Neuron *neuron = malloc(sizeof(Neuron) + number_of_inputs * sizeof(float));
-	neuron -> number_of_inputs = number_of_inputs;
-	neuron -> bias = 0;
-	for (int i = 0; i < number_of_inputs; i++){
-		neuron -> weights[i] = ((double)rand() / (double)RAND_MAX) * 2.0 - 1;
-	}
-	return neuron;
+double randn (double mu, double sigma){
+  double U1, U2, W, mult;
+  static double X1, X2;
+  static int call = 0;
+ 
+  if (call == 1)
+    {
+      call = !call;
+      return (mu + sigma * (double) X2);
+    }
+ 
+  do
+    {
+      U1 = -1 + ((double) rand () / RAND_MAX) * 2;
+      U2 = -1 + ((double) rand () / RAND_MAX) * 2;
+      W = pow (U1, 2) + pow (U2, 2);
+    }
+  while (W >= 1 || W == 0);
+ 
+  mult = sqrt ((-2 * log (W)) / W);
+  X1 = U1 * mult;
+  X2 = U2 * mult;
+ 
+  call = !call;
+ 
+  return (mu + sigma * (double) X1);
 }
 
-Layer *createLayer(int number_of_inputs, int number_of_neurons){
-	Layer *layer = malloc(sizeof(Layer) + number_of_neurons * (sizeof(Neuron) + sizeof(float) * number_of_inputs));
+vector *make_vector(size_t n, type type_of_array){
+	vector *v = malloc(sizeof(*v) + n * sizeof(v-> array[0]));
+	v -> length = n;
 
-	layer -> number_of_neurons = number_of_neurons;
-
-	for (int i = 0; i < number_of_neurons; i++){
-		layer -> neurons[i] = createNeuron(number_of_inputs);
-	}
-	return layer;
-}
-
-float forwardPass(float inputs[], Neuron *neuron){
-	float output = 0;
-	for (int i = 0; i < neuron -> number_of_inputs; i++){
-		output += inputs[i] * neuron -> weights[i] ;
-	}
+	// if creating weights matrix 
+	if (type_of_array == weights){
+		for (size_t i = 0; i < n; i++){
+			v -> array[i] = randn(0, 1);
+		}
 	
-	output += neuron ->bias;
+	// if creating biases array
+	} else if (type_of_array == biases){
+		for (size_t i = 0; i < n; i++){
+			v -> array[i] = 0;
+		}
+	} 
 
-	return output;
+	return v;
 }
 
-float ReLU(float output){
-	if (output < 0){
-		return 0;
+vector *copy_vector(vector *original_vector){
+	vector *v = malloc(sizeof(*v) + original_vector -> length * sizeof(v -> array[0]));
+
+	v -> length = original_vector -> length;
+
+	for (int i = 0; i < original_vector->length; i++){
+		v -> array[i] = original_vector -> array[i];
 	}
 
-	return output;
+	return v;
 }
 
-float *getOutputFromLayer(float inputs[], Layer *layer){
-	float *result = malloc(sizeof(float) * layer -> number_of_neurons); 
+vector *forward(vector *input, vector *weights, vector *biases){
+	vector *output = make_vector(biases -> length, empty);
 
-	for (int i = 0; i < layer -> number_of_neurons; i++){
-		result[i] = forwardPass(inputs,layer -> neurons[i]);
+	int matrix_width = input -> length;
+	int matrix_height = weights -> length / input -> length;
+
+	for (int i = 0; i < matrix_height; i++){
+		double output_value = biases -> array[i];
+		for (int j = 0; j < matrix_width; j++){
+			output_value += input -> array[j] * (weights -> array[i * matrix_width + j]);  
+		}
+		output -> array[i] = output_value;
 	}
+
+	free(input);
+	free(weights);
+	free(biases);
+
+	return output;
+
+}
+
+vector *activation_relu(vector *output){
+	vector *result = make_vector(output -> length, empty);
+
+	for (int i = 0; i < output -> length; i++){
+		if (output -> array[i] < 0){
+			result -> array[i] = 0;
+		} else {
+			result -> array[i] = output -> array[i];
+		}
+	}
+
+	free(output);
 	return result;
 }
 
-void freeLayer(Layer *layer){
-	for (int i = 0; i < layer -> number_of_neurons; i++){
-		free(layer -> neurons[i]);
+vector *softmax_activation_function(vector *output){
+	vector *result = make_vector(output -> length, empty);
+	double sum = 0;
+
+	for (int i = 0; i < output -> length; i++){
+		sum += exp(output -> array[i]);
 	}
 
-	free(layer);
+
+	for (int i = 0; i < output -> length; i++){
+		result -> array[i] = exp(output -> array[i]) / sum;
+	}
+
+	free(output);
+	return result;
 }
 
+int get_move(vector *output){
+	double max_value = 0;
+	int max_index = 0;;
 
-
-
-void printNeuron(Neuron *neuron){
-	printf("Number of inputs: %d\n", neuron -> number_of_inputs);
-	printf("Bias Value: %f\n", neuron -> bias);
-	printf("values of the weights: \n");
-	for (int i = 0; i < neuron -> number_of_inputs; i++){
-		printf("%f\n", neuron-> weights[i]);
+	for (int i = 0; i < output -> length; i++){
+		printf("%f ", output -> array[i]);
+		if (output -> array[i] > max_value){
+			max_value = output -> array[i];
+			max_index = i;
+		}
 	}
+	return max_index;
 }
-
-
-int getMax(float neuronUp, float neuronDown ,float neuronLeft ,float neuronRight){
-	int max = 0;
-	int max_result = 0;
-	printf("Neuron Up: %f", neuronUp);
-	printf("Neuron Down: %f", neuronDown);
-	printf("Neuron Left: %f", neuronLeft);
-	printf("Neuron Right: %f", neuronRight);
-	if (neuronUp > max){
-		max = neuronUp;
-		max_result = 0;
-	}
-	if (neuronDown > max){
-		max = neuronDown;
-		max_result = 1;
-	}
-	if (neuronLeft > max){
-		max = neuronLeft;
-		max_result = 2;
-	}
-	if (neuronRight > max){
-		max = neuronRight;
-		max_result = 3;
-	}
-
-	return max_result;
-}
-
 
 int main(void){
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
@@ -144,18 +175,15 @@ int main(void){
 	int count = 0;
 	float total_distance = 0;
 
-	Neuron *neuronUp = createNeuron(NUMBER_OF_BERBS * 2 + 2);
-	Neuron *neuronDown = createNeuron(NUMBER_OF_BERBS * 2 + 2);
-	Neuron *neuronLeft = createNeuron(NUMBER_OF_BERBS * 2 + 2);
-	Neuron *neuronRight = createNeuron(NUMBER_OF_BERBS * 2 + 2);
+	vector *input_layer = make_vector((NUMBER_OF_BERBS * 2 + 2) * 10, weights);
+	vector *input_layer_biases = make_vector(10, biases);
+
+	vector *hidden_layer = make_vector(10 * 10, weights);
+	vector *hidden_layer_biases = make_vector(10, biases);
 
 
-
-	Layer *hiddenLayer = createLayer(NUMBER_OF_BERBS * 2 + 2, 5);
-	Layer *outputLayer = createLayer(5, 4);
-
-
-
+	vector *output_layer = make_vector(10 * 4, weights);
+	vector *output_layer_biases = make_vector(4, biases);
 
 	while (!WindowShouldClose()){
 		BeginDrawing();
@@ -172,45 +200,51 @@ int main(void){
 
 		updateBerbPosition(berb_list, number_of_berbs, player_x, player_y);
 
+		vector *input_layer_copy = copy_vector(input_layer);
+		vector *input_layer_biases_copy = copy_vector(input_layer_biases);
+
+		vector *hidden_layer_copy = copy_vector(hidden_layer);
+		vector *hidden_layer_biases_copy = copy_vector(hidden_layer_biases);
+
+		vector *output_layer_copy = copy_vector(output_layer);
+		vector *output_layer_biases_copy = copy_vector(output_layer_biases);
+
+
 		// get input list
-		float input_list[NUMBER_OF_BERBS * 2 + 2];
+		vector *input = make_vector(NUMBER_OF_BERBS * 2 + 2, empty);
 		int i = 0;
 		for (int j = 0; j < NUMBER_OF_BERBS; j++){
-			input_list[i] = berb_list[j] -> x_pos / (float)GetScreenWidth();
-			input_list[i + 1] = berb_list[j] -> y_pos / (float)GetScreenHeight();
+			input -> array[i] = berb_list[j] -> x_pos / (float)GetScreenWidth();
+			input -> array[i + 1] = berb_list[j] -> y_pos / (float)GetScreenHeight();
 			i += 2;
 		}
-		input_list[i] = player_x / (float)GetScreenWidth();
-		input_list[i + 1] = player_y / (float)GetScreenHeight();
+		input -> array[i] = player_x / (float)GetScreenWidth();
+		input -> array[i + 1] = player_y / (float)GetScreenHeight();
 
-		float *output_results = getOutputFromLayer(input_list, hiddenLayer);
-		float *directions = getOutputFromLayer(output_results, outputLayer);
+		vector *input_layer_results = forward(input, input_layer_copy, input_layer_biases_copy);
+		vector *input_layer_relu = activation_relu(input_layer_results); 
 
-		int result = getMax(ReLU(directions[0]), ReLU(directions[1]), ReLU(directions[2]), ReLU(directions[3]));
-		free(output_results);
-		free(directions);
+		vector *hidden_layer_results = forward(input_layer_relu, hidden_layer_copy, hidden_layer_biases_copy);
 
-		printf("%d\n", result);
+		vector *output_layer_results = forward(hidden_layer_results, output_layer_copy, output_layer_biases_copy);
 
-		if (result == 0){
+		vector *output = softmax_activation_function(output_layer_results);
+
+		int move = get_move(output);
+		printf("%d\n",move);
+
+		if (move == 0){
 			player_y -= 3;
 		}
-		if (result == 1){
+		if (move == 1){
 			player_y += 3;
 		}
-		if (result == 2){
+		if (move == 2){
 			player_x -= 3;
 		}
-		if (result == 3){
+		if (move == 3){
 			player_x += 3;
 		}
-
-
-
-
-		//for (int i = 0; i < NUMBER_OF_BERBS; i++){
-		//	printf("x: %f y: %f\n", berb_list[i] -> x_pos, berb_list[i] -> y_pos);
-		//}
 
 		total_distance +=  calculateTotalDistance(berb_list, NUMBER_OF_BERBS);
 
@@ -220,5 +254,10 @@ int main(void){
 
 	printf("Average distance: %f\n", total_distance / count);
 	freeBerbs(berb_list, NUMBER_OF_BERBS);
-
+	free(input_layer);
+	free(input_layer_biases);
+	free(hidden_layer);
+	free(hidden_layer_biases);
+	free(output_layer);
+	free(output_layer_biases);
 }
